@@ -52,6 +52,8 @@ def bigramParser(file):
     return Bigram(bigramPairs, words)
 
 # Takes in an array of bigram pairs and calculates the probability for all bigrams to occur
+
+
 def calcProbBigram(bigrams, smoothing):
 
     # Calculate number of times every word appears in the corpus (count(w2))
@@ -74,7 +76,6 @@ def calcProbBigram(bigrams, smoothing):
             bigramCounts.update({bigram: bigrams.bigramPairs.count(bigram)})
         if smoothing == 1:
             bigramCounts.update({bigram: bigrams.bigramPairs.count(bigram)+1})
-    
 
     # Calculate the probability that a bigram appears in the corpus
     bigramProbs = {}
@@ -84,35 +85,102 @@ def calcProbBigram(bigrams, smoothing):
 
     return bigramProbs
 
-# Calculates the probability of each sentence in test data 
+# Calculates the probability of each sentence in test data
 # given probabilities of bigrams in training data
-def calcSentProb(bpsProbs, bpsTest, smoothing, vocab=[]):
+
+
+def calcSentProb(bpsProbs, bpsTest, smoothing):
     sentenceProbs = {}
-    sentence = ""
+    sentence = []
     sentenceProb = 1
+    testVocab = []
 
+    # Get vocabulary of test data
+    for word in bpsTest.words:
+        if word in testVocab:
+            continue
+        testVocab.append(word)
+
+    # Tables
+    countsTable = {}
+    probsTable = {}
+
+    # Get sentences in corpus
     for bpTest in bpsTest.bigramPairs:
-
         # End of sentence
         if bpTest[1] == '</s>':
-            sentence = sentence[:-1]
-            sentenceProbs.update({sentence: sentenceProb})
-            sentence = ""
+
+            # Run through one last time
+            # Bigram exists in training data
+            if bpTest in bpsProbs:
+                sentenceProb *= bpsProbs.get(bpTest)
+                countsTable.update(
+                    {bpTest: int(bpsProbs.get(bpTest)*wordCounts.get(bpTest[0]))})
+                probsTable.update({bpTest: bpsProbs.get(bpTest)})
+
+            # Bigram doesn't exist in training data
+            else:
+                if(smoothing == 0):
+                    sentenceProb *= 0.0
+                    countsTable.update({bpTest: 0})
+                    probsTable.update({bpTest: 0.0})
+                if(smoothing == 1):
+                    if bpTest[0] in wordCounts:
+                        sentenceProb *= (1.0/wordCounts.get(bpTest[0]))
+                        countsTable.update({bpTest: 1})
+                        probsTable.update(
+                            {bpTest: (1.0/wordCounts.get(bpTest[0]))})
+                    else:
+                        sentenceProb *= 0.0
+                        countsTable.update({bpTest: 0})
+                        probsTable.update({bpTest: 0})
+            
+            # Update sentence probabilities
+            sentenceProbs.update({" ".join(sentence): sentenceProb})
+
+            # Print and reset all sentence values
+            print("Sentence:", " ".join(sentence))
+            print("Counts:")
+            for bigram in countsTable:
+                print(bigram, ": ", countsTable[bigram], sep="")
+            print("Probabilities:")
+            for bigram in probsTable:
+                print(bigram, ": ", probsTable[bigram], sep="")
+            countsTable = {}
+            probsTable = {}
+            print("Overall sentence probability: ",
+                  sentenceProb, "\n\n", sep='')
+
+            sentence = []
             sentenceProb = 1
+
             continue
 
+        # Bigram exists in training data
         if bpTest in bpsProbs:
             sentenceProb *= bpsProbs.get(bpTest)
+            countsTable.update(
+                {bpTest: int(bpsProbs.get(bpTest)*wordCounts.get(bpTest[0]))})
+            probsTable.update({bpTest: bpsProbs.get(bpTest)})
+
+        # Bigram doesn't exist in training data
         else:
             if(smoothing == 0):
                 sentenceProb *= 0.0
+                countsTable.update({bpTest: 0})
+                probsTable.update({bpTest: 0.0})
             if(smoothing == 1):
                 if bpTest[0] in wordCounts:
-                    sentenceProb *= (1/wordCounts.get(bpTest[0]))
+                    sentenceProb *= (1.0/wordCounts.get(bpTest[0]))
+                    countsTable.update({bpTest: 1})
+                    probsTable.update(
+                        {bpTest: (1.0/wordCounts.get(bpTest[0]))})
+                else:
+                    sentenceProb *= 0.0
+                    countsTable.update({bpTest: 0})
+                    probsTable.update({bpTest: 0})
 
-        sentence += (bpTest[1] + ' ')
-
-    print(sentenceProbs)
+        sentence.append(bpTest[1])
 
 
 # Driver that runs the program
@@ -130,7 +198,7 @@ if len(sys.argv)-1 == 3:
     bigramTrain = bigramParser(sys.argv[1])
     probTrain = calcProbBigram(bigramTrain, int(sys.argv[3]))
     bigramTest = bigramParser(sys.argv[2])
-    calcSentProb(probTrain, bigramTest, int(sys.argv[3]), bigramTrain.words)
+    calcSentProb(probTrain, bigramTest, int(sys.argv[3]))
     print("-----\n", "HW1 took ", round(time.time() -
                                         start_time, 4), " seconds to complete.", sep="")
 
