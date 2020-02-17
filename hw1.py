@@ -100,12 +100,19 @@ def calcSentProb(bpsProbs, bpsTest, smoothing):
             continue
         testVocab.append(word)
 
+    # Generate all possible bigrams from test vocabulary
+    possBigramsTest = []
+    for thisWord in testVocab:
+        for word in testVocab:
+            possBigramsTest.append((thisWord, word))
+
     # Tables
     countsTable = {}
     probsTable = {}
 
-    # Get sentences in corpus
+    # Get bigrams from test sentences
     for bpTest in bpsTest.bigramPairs:
+
         # End of sentence
         if bpTest[1] == '</s>':
 
@@ -137,18 +144,61 @@ def calcSentProb(bpsProbs, bpsTest, smoothing):
             # Update sentence probabilities
             sentenceProbs.update({" ".join(sentence): sentenceProb})
 
+            # Calculate probabilities and counts for bigrams not in sentence
+            for thisWord in sentence:
+                for word in sentence:
+                    if (thisWord, word) not in countsTable:
+                        # Bigram exists in training data
+                        if (thisWord, word) in bpsProbs:
+                            countsTable.update(
+                                {(thisWord, word): int(bpsProbs.get((thisWord, word))*wordCounts.get(thisWord))})
+                            probsTable.update({(thisWord, word): bpsProbs.get((thisWord, word))})
+
+                        # Bigram doesn't exist in training data
+                        else:
+                            if(smoothing == 0):
+                                countsTable.update({(thisWord, word): 0})
+                                probsTable.update({(thisWord, word): 0.0})
+                            if(smoothing == 1):
+                                if thisWord in wordCounts:
+                                    countsTable.update({(thisWord, word): 1})
+                                    probsTable.update(
+                                        {(thisWord, word): (1.0/wordCounts.get(thisWord))})
+                                else:
+                                    countsTable.update({(thisWord, word): 0})
+                                    probsTable.update({(thisWord, word): 0})
+
             # Print and reset all sentence values
             print("Sentence:", " ".join(sentence))
+
             print("Counts:")
-            for bigram in countsTable:
-                print(bigram, ": ", countsTable[bigram], sep="")
+            print('{:8}'.format('\t'), end='')
+            for word in sentence:
+                print('{:8}'.format(word[:4] if len(word) > 4 else word), end='')
+            print()
+            for thisWord in sentence:
+                print('{:8}'.format(thisWord[:4] if len(thisWord) > 4 else thisWord), end='')
+                for word in sentence:
+                    print('{:8}'.format(countsTable.get((thisWord, word))), end='')
+                print()
+
             print("Probabilities:")
-            for bigram in probsTable:
-                print(bigram, ": ", probsTable[bigram], sep="")
+            print('{:8}'.format('\t'), end='')
+            for word in sentence:
+                print('{:8}'.format(word[:4] if len(word) > 4 else word), end='')
+            print()
+            for thisWord in sentence:
+                print('{:8}'.format(thisWord[:4] if len(thisWord) > 4 else thisWord), end='')
+                for word in sentence:
+                    print('{:8}'.format(round(probsTable.get((thisWord, word)), 4)), end='')
+                print()
+
+            print("Overall sentence probability: ",
+                sentenceProbs.get(" ".join(sentence)), "\n\n", sep='')
+
             countsTable = {}
             probsTable = {}
-            print("Overall sentence probability: ",
-                  sentenceProb, "\n\n", sep='')
+            
 
             sentence = []
             sentenceProb = 1
