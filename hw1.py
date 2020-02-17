@@ -6,9 +6,8 @@ NetID: nkc160130
 CS 6320
 Due: 2/17/2020
 Dr. Moldovan
+Version: Python 3.8.0
 '''
-
-
 class Bigram:
     def __init__(self):
         self.bigramPairs = []
@@ -185,11 +184,6 @@ def calcSentProb(bpsProbs, bpsTest, smoothing):
 
 # Driver that runs the program
 start_time = time.time()
-
-# Not running on Python 3.x
-if sys.version_info < (3, 0):
-    print("ERROR: This program requires Python 3.x or higher.")
-    exit(1)
 
 # Word counts for all words
 wordCounts = {}
